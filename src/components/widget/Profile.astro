@@ -1,0 +1,133 @@
+---
+import { Icon } from "astro-icon/components";
+import { profileConfig } from "../../config";
+import { url } from "../../utils/url-utils";
+import ImageWrapper from "../misc/ImageWrapper.astro";
+
+const config = profileConfig;
+---
+<div class="card-base p-3">
+    <a aria-label="Go to About Page" href={url('/about/')}
+       class="group block relative mx-auto mt-1 lg:mx-0 lg:mt-0 mb-3
+       max-w-[12rem] lg:max-w-none overflow-hidden rounded-xl active:scale-95">
+        <div class="absolute transition pointer-events-none group-hover:bg-black/30 group-active:bg-black/50
+        w-full h-full z-50 flex items-center justify-center">
+            <Icon name="fa6-regular:address-card"
+                  class="transition opacity-0 scale-90 group-hover:scale-100 group-hover:opacity-100 text-white text-5xl">
+            </Icon>
+        </div>
+        <ImageWrapper src={config.avatar || ""} alt="Profile Image of the Author" class="mx-auto lg:w-full h-full lg:mt-0 "></ImageWrapper>
+    </a>
+    <div class="px-2">
+        <div class="font-bold text-3xl text-center mb-1 dark:text-neutral-50 transition">{config.name}</div>
+        <div class="h-1 w-5 bg-[var(--primary)] mx-auto rounded-full mb-2 transition"></div>
+        <div class="text-center text-neutral-400 mb-2.5 transition">{config.bio}</div>
+        <div class="flex gap-2 justify-center mb-1">
+            {config.links.length > 1 && config.links.map(item =>
+                    <a rel="me" aria-label={item.name} href={item.url} target="_blank"
+                       class="btn-regular rounded-lg h-10 w-10 active:scale-90 transition-transform duration-200 hover:scale-125 group">
+                        <Icon name={item.icon} class="text-[1.5rem] transition-transform duration-300 group-hover:rotate-[360deg]"></Icon>
+                    </a>
+            )}
+            {config.links.length == 1 && <a rel="me" aria-label={config.links[0].name} href={config.links[0].url} target="_blank"
+                                            class="btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
+                <Icon name={config.links[0].icon} class="text-[1.5rem]"></Icon>
+                {config.links[0].name}
+            </a>}
+        </div>
+        <!-- Nút phát nhạc và audio ẩn dưới tiểu sử -->
+        <div class="mt-3 flex justify-center items-center gap-2">
+          <button id="music-play-btn" class="rounded-full p-2 bg-gradient-to-tr from-primary to-blue-400 shadow-xl border-2 border-white ring-2 ring-blue-200 hover:scale-110 hover:shadow-xl transition-transform duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300" title="Phát nhạc">
+            <Icon id="music-icon" name="fa6-solid:play" class="text-lg text-white transition-transform duration-500 drop-shadow-lg" />
+          </button>
+          <span id="music-title" class="text-xs text-neutral-500 font-semibold"></span>
+          <audio id="profile-music" preload="auto"></audio>
+        </div>
+    </div>
+</div>
+
+<script is:inline>
+  // Danh sách nhạc mp3
+  const songs = [
+    { src: "/assets/music/song1.mp3"},
+    { src: "/assets/music/song2.mp3"},
+    { src: "/assets/music/song3.mp3"},
+    { src: "/assets/music/song4.mp3"},
+    { src: "/assets/music/song5.mp3"},
+    { src: "/assets/music/song6.mp3"}
+  ];
+  // Random bài khi vào web
+  const randomIndex = Math.floor(Math.random() * songs.length);
+  const audio = document.getElementById('profile-music');
+  const btn = document.getElementById('music-play-btn');
+  const icon = document.getElementById('music-icon');
+  const title = document.getElementById('music-title');
+  let isPlaying = false;
+
+  audio.src = songs[randomIndex].src;
+
+  // Hàm thêm/xóa hiệu ứng xoay
+  function setSpinning(spin) {
+    if (spin) {
+      icon.classList.add('animate-spin-slow');
+      btn.classList.add('music-vibrate');
+    } else {
+      icon.classList.remove('animate-spin-slow');
+      btn.classList.remove('music-vibrate');
+    }
+  }
+
+  // Tự động phát khi vào web (nếu trình duyệt cho phép)
+  window.addEventListener('DOMContentLoaded', () => {
+    audio.play().then(() => {
+      icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
+      setSpinning(true);
+      isPlaying = true;
+    }).catch(() => {});
+  });
+
+  // Bấm nút để play/pause
+  btn.addEventListener('click', () => {
+    if (!isPlaying) {
+      audio.play();
+      icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
+      setSpinning(true);
+      isPlaying = true;
+    } else {
+      audio.pause();
+      icon.classList.replace('fa6-solid:pause', 'fa6-solid:play');
+      setSpinning(false);
+      isPlaying = false;
+    }
+  });
+
+  // Khi hết bài, random bài mới và tự động phát tiếp
+  audio.addEventListener('ended', () => {
+    const nextIndex = Math.floor(Math.random() * songs.length);
+    audio.src = songs[nextIndex].src;
+    title.textContent = songs[nextIndex].title;
+    audio.play();
+  });
+</script>
+
+<style>
+  .animate-spin-slow {
+    animation: spin 2s linear infinite;
+  }
+  @keyframes spin {
+    100% { transform: rotate(360deg); }
+  }
+  /* Hiệu ứng rung nhẹ khi đang phát */
+  .music-vibrate {
+    animation: vibrate 0.25s linear infinite both;
+  }
+  @keyframes vibrate {
+    0% { transform: scale(1) rotate(-2deg); }
+    20% { transform: scale(1.05) rotate(2deg); }
+    40% { transform: scale(1.1) rotate(-2deg); }
+    60% { transform: scale(1.05) rotate(2deg); }
+    80% { transform: scale(1) rotate(-2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+</style>
+
