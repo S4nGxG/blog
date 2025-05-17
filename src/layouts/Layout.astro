@@ -155,82 +155,70 @@ const bannerOffset =
 			<source src="assets/music/background.mp3" type="audio/mpeg">
 		</audio>
 
+		<button id="musicControl" class="fixed bottom-4 right-4 z-50 bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+			<i class="fa6-solid fa-pause text-xl"></i>
+		</button>
+
 		<script>
-			// Create audio context
-			let audioContext;
 			let audioElement;
-			let audioSource;
-			let isPlaying = false;
+			let isPlaying = true; // Always start playing
 
 			async function initAudio() {
 				try {
-					// Create audio context
-					audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 					audioElement = document.getElementById('bgMusic') as HTMLAudioElement;
-					
 					if (audioElement) {
 						audioElement.volume = 0.5;
-						
-						// Create media element source
-						audioSource = audioContext.createMediaElementSource(audioElement);
-						audioSource.connect(audioContext.destination);
-
-						// Try to play
-						await playAudio();
+						await audioElement.play();
 					}
 				} catch (error) {
 					console.log('Audio initialization failed:', error);
 				}
 			}
 
-			async function playAudio() {
-				if (!audioElement || isPlaying) return;
+			async function togglePlay() {
+				if (!audioElement) return;
 
 				try {
-					// Resume audio context if suspended
-					if (audioContext.state === 'suspended') {
-						await audioContext.resume();
+					const button = document.getElementById('musicControl');
+					if (isPlaying) {
+						await audioElement.pause();
+						if (button) button.innerHTML = '<i class="fa6-solid fa-play text-xl"></i>';
+					} else {
+						await audioElement.play();
+						if (button) button.innerHTML = '<i class="fa6-solid fa-pause text-xl"></i>';
 					}
-
-					// Try to play
-					await audioElement.play();
-					isPlaying = true;
-					
-					// Remove all event listeners after successful play
-					removeAllListeners();
+					isPlaying = !isPlaying;
 				} catch (error) {
-					console.log('Audio play failed:', error);
-					// Add event listeners for user interaction
-					addInteractionListeners();
+					console.log('Audio toggle failed:', error);
 				}
-			}
-
-			function addInteractionListeners() {
-				const events = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
-				events.forEach(event => {
-					document.addEventListener(event, playAudio, { once: false });
-				});
-			}
-
-			function removeAllListeners() {
-				const events = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
-				events.forEach(event => {
-					document.removeEventListener(event, playAudio);
-				});
 			}
 
 			// Initialize when DOM is loaded
-			document.addEventListener('DOMContentLoaded', initAudio);
-
-			// Also try to play when page becomes visible
-			document.addEventListener('visibilitychange', () => {
-				if (document.visibilityState === 'visible' && !isPlaying) {
-					playAudio();
+			document.addEventListener('DOMContentLoaded', () => {
+				initAudio();
+				
+				// Add click handler for the control button
+				const button = document.getElementById('musicControl');
+				if (button) {
+					button.addEventListener('click', togglePlay);
 				}
 			});
 
-			// Try to play on window load
-			window.addEventListener('load', playAudio);
+			// Handle page visibility changes
+			document.addEventListener('visibilitychange', () => {
+				if (document.visibilityState === 'visible' && isPlaying) {
+					audioElement?.play();
+				}
+			});
+
+			// Handle page transitions
+			if (window.swup) {
+				window.swup.hooks.on('visit:start', () => {
+					if (isPlaying) {
+						audioElement?.play();
+					}
+				});
+			}
 		</script>
 
 		<ConfigCarrier></ConfigCarrier>
