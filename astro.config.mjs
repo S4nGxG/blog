@@ -20,8 +20,8 @@ import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs";
 
 // https://astro.build/config
 export default defineConfig({
-	site: "https://s4ngxg.github.io/blog/",
-	base: "/blog",
+	site: "https://blog-six-inky-87.vercel.app/",
+	base: "/",
 	output: "static",
 	trailingSlash: "always",
 	integrations: [
