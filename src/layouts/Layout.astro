@@ -151,6 +151,88 @@ const bannerOffset =
 	<body class=" min-h-screen transition " class:list={[{"lg:is-home": isHomePage, "enable-banner": enableBanner}]}
 		  data-overlayscrollbars-initialize
 	>
+		<audio id="bgMusic" loop preload="auto">
+			<source src="assets/music/background.mp3" type="audio/mpeg">
+		</audio>
+
+		<script>
+			// Create audio context
+			let audioContext;
+			let audioElement;
+			let audioSource;
+			let isPlaying = false;
+
+			async function initAudio() {
+				try {
+					// Create audio context
+					audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+					audioElement = document.getElementById('bgMusic') as HTMLAudioElement;
+					
+					if (audioElement) {
+						audioElement.volume = 0.5;
+						
+						// Create media element source
+						audioSource = audioContext.createMediaElementSource(audioElement);
+						audioSource.connect(audioContext.destination);
+
+						// Try to play
+						await playAudio();
+					}
+				} catch (error) {
+					console.log('Audio initialization failed:', error);
+				}
+			}
+
+			async function playAudio() {
+				if (!audioElement || isPlaying) return;
+
+				try {
+					// Resume audio context if suspended
+					if (audioContext.state === 'suspended') {
+						await audioContext.resume();
+					}
+
+					// Try to play
+					await audioElement.play();
+					isPlaying = true;
+					
+					// Remove all event listeners after successful play
+					removeAllListeners();
+				} catch (error) {
+					console.log('Audio play failed:', error);
+					// Add event listeners for user interaction
+					addInteractionListeners();
+				}
+			}
+
+			function addInteractionListeners() {
+				const events = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
+				events.forEach(event => {
+					document.addEventListener(event, playAudio, { once: false });
+				});
+			}
+
+			function removeAllListeners() {
+				const events = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
+				events.forEach(event => {
+					document.removeEventListener(event, playAudio);
+				});
+			}
+
+			// Initialize when DOM is loaded
+			document.addEventListener('DOMContentLoaded', initAudio);
+
+			// Also try to play when page becomes visible
+			document.addEventListener('visibilitychange', () => {
+				if (document.visibilityState === 'visible' && !isPlaying) {
+					playAudio();
+				}
+			});
+
+			// Try to play on window load
+			window.addEventListener('load', playAudio);
+		</script>
+
 		<ConfigCarrier></ConfigCarrier>
 		<slot />
 
