@@ -47,67 +47,72 @@ const config = profileConfig;
 </div>
 
 <script is:inline>
-  // Danh sách nhạc mp3
-  const songs = [
-    { src: "/assets/music/song1.mp3"},
-    { src: "/assets/music/song2.mp3"},
-    { src: "/assets/music/song3.mp3"},
-    { src: "/assets/music/song4.mp3"},
-    { src: "/assets/music/song5.mp3"},
-    { src: "/assets/music/song6.mp3"}
-  ];
-  // Random bài khi vào web
-  const randomIndex = Math.floor(Math.random() * songs.length);
-  const audio = document.getElementById('profile-music');
-  const btn = document.getElementById('music-play-btn');
-  const icon = document.getElementById('music-icon');
-  const title = document.getElementById('music-title');
-  let isPlaying = false;
+  // Sử dụng IIFE để tránh xung đột biến toàn cục
+  (function() {
+    // Danh sách nhạc mp3
+    const songs = [
+      { src: "/assets/music/song1.mp3"},
+      { src: "/assets/music/song2.mp3"},
+      { src: "/assets/music/song3.mp3"},
+      { src: "/assets/music/song4.mp3"},
+      { src: "/assets/music/song5.mp3"},
+      { src: "/assets/music/song6.mp3"}
+    ];
+    // Random bài khi vào web
+    const randomIndex = Math.floor(Math.random() * songs.length);
+    const audio = document.getElementById('profile-music');
+    const btn = document.getElementById('music-play-btn');
+    const icon = document.getElementById('music-icon');
+    const title = document.getElementById('music-title');
+    let isPlaying = false;
 
-  audio.src = songs[randomIndex].src;
+    if (!audio || !btn || !icon) return; // Kiểm tra element tồn tại
 
-  // Hàm thêm/xóa hiệu ứng xoay
-  function setSpinning(spin) {
-    if (spin) {
-      icon.classList.add('animate-spin-slow');
-      btn.classList.add('music-vibrate');
-    } else {
-      icon.classList.remove('animate-spin-slow');
-      btn.classList.remove('music-vibrate');
+    audio.src = songs[randomIndex].src;
+
+    // Hàm thêm/xóa hiệu ứng xoay
+    function setSpinning(spin) {
+      if (spin) {
+        icon.classList.add('animate-spin-slow');
+        btn.classList.add('music-vibrate');
+      } else {
+        icon.classList.remove('animate-spin-slow');
+        btn.classList.remove('music-vibrate');
+      }
     }
-  }
 
-  // Tự động phát khi vào web (nếu trình duyệt cho phép)
-  window.addEventListener('DOMContentLoaded', () => {
-    audio.play().then(() => {
-      icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
-      setSpinning(true);
-      isPlaying = true;
-    }).catch(() => {});
-  });
+    // Tự động phát khi vào web (nếu trình duyệt cho phép)
+    window.addEventListener('DOMContentLoaded', () => {
+      audio.play().then(() => {
+        icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
+        setSpinning(true);
+        isPlaying = true;
+      }).catch(() => {});
+    });
 
-  // Bấm nút để play/pause
-  btn.addEventListener('click', () => {
-    if (!isPlaying) {
+    // Bấm nút để play/pause
+    btn.addEventListener('click', () => {
+      if (!isPlaying) {
+        audio.play();
+        icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
+        setSpinning(true);
+        isPlaying = true;
+      } else {
+        audio.pause();
+        icon.classList.replace('fa6-solid:pause', 'fa6-solid:play');
+        setSpinning(false);
+        isPlaying = false;
+      }
+    });
+
+    // Khi hết bài, random bài mới và tự động phát tiếp
+    audio.addEventListener('ended', () => {
+      const nextIndex = Math.floor(Math.random() * songs.length);
+      audio.src = songs[nextIndex].src;
+      title.textContent = songs[nextIndex].title;
       audio.play();
-      icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
-      setSpinning(true);
-      isPlaying = true;
-    } else {
-      audio.pause();
-      icon.classList.replace('fa6-solid:pause', 'fa6-solid:play');
-      setSpinning(false);
-      isPlaying = false;
-    }
-  });
-
-  // Khi hết bài, random bài mới và tự động phát tiếp
-  audio.addEventListener('ended', () => {
-    const nextIndex = Math.floor(Math.random() * songs.length);
-    audio.src = songs[nextIndex].src;
-    title.textContent = songs[nextIndex].title;
-    audio.play();
-  });
+    });
+  })();
 </script>
 
 <style>
