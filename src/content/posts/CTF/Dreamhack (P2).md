@@ -2,6 +2,8 @@
 title: Dreamhack (P2)
 published: 2024-07-27
 category: "CTF"
+tags: [PWN, CTF]
+image: https://i.pinimg.com/736x/6e/48/a1/6e48a1418995f5e3032a572c6dd1ced4.jpg
 ---
 
 # [Out-of-boundary](https://dreamhack.io/wargame/challenges/11)

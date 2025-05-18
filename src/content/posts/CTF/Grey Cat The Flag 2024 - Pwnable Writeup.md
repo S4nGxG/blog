@@ -2,6 +2,8 @@
 title: Grey Cat The Flag 2024 - Pwnable Writeup
 published: 2024-05-10
 category: "CTF"
+tags: [PWN, CTF]
+image: https://i.pinimg.com/736x/99/4f/25/994f25472307650c7e89f3dafa392968.jpg
 ---
 
 # ****Baby Goods****

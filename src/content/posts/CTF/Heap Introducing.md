@@ -2,6 +2,8 @@
 title: Heap Introducing
 published: 2024-07-29
 category: "CTF"
+image: https://i.pinimg.com/736x/80/27/c6/8027c6c615900bf009b322294b61fcb2.jpg
+tags: [PWN, CTF]
 ---
 
 - Heap là vùng nhớ được phân bổ động dùng để lưu trữ dữ liệu

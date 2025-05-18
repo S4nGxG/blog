@@ -2,6 +2,8 @@
 title: Dreamhack
 published: 2024-07-25
 category: "CTF"
+tags: [PWN, CTF]
+image: https://i.pinimg.com/736x/bf/27/3b/bf273b526094e6a1f4624fe485874dcb.jpg
 ---
 
 # [Welcome](https://dreamhack.io/wargame/challenges/27)

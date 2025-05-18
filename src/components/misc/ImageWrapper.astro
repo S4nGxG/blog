@@ -21,6 +21,7 @@ const isLocal = !(
 	src.startsWith("data:")
 );
 const isPublic = src.startsWith("/");
+const isExternal = src.startsWith("http") || src.startsWith("https");
 
 // TODO temporary workaround for images dynamic import
 // https://github.com/withastro/astro/issues/3373
@@ -47,11 +48,15 @@ const imageStyle = `object-position: ${position}`;
 ---
 <div id={id} class:list={[className, 'overflow-hidden relative']}>
     <div class="transition absolute inset-0 dark:bg-black/10 bg-opacity-50 pointer-events-none"></div>
-    <img 
-        src={isPublic ? src : "/assets/images/avatar.png"} 
-        alt={alt || ""} 
-        class={imageClass} 
-        style={imageStyle}
-    />
+    {isLocal && img ? (
+        <Image src={img} alt={alt || ""} class={imageClass} style={imageStyle} />
+    ) : (
+        <img 
+            src={isPublic || isExternal ? src : "/assets/images/avatar.png"} 
+            alt={alt || ""} 
+            class={imageClass} 
+            style={imageStyle}
+        />
+    )}
 </div>
 

@@ -2,6 +2,8 @@
 title: Format String
 published: 2024-07-13
 category: "CTF"
+tags: [PWN, CTF]
+image: https://i.pinimg.com/736x/56/d6/5f/56d65f27ec9f2c3fa6dc13e1d59f9a26.jpg
 ---
 
 
