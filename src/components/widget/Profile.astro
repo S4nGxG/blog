@@ -40,15 +40,18 @@ const config = profileConfig;
           <button id="music-play-btn" class="rounded-full p-2 bg-gradient-to-tr from-primary to-blue-400 shadow-xl border-2 border-white ring-2 ring-blue-200 hover:scale-110 hover:shadow-xl transition-transform duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300" title="Phát nhạc">
             <Icon id="music-icon" name="fa6-solid:play" class="text-lg text-white transition-transform duration-500 drop-shadow-lg" />
           </button>
-          <span id="music-title" class="text-xs text-neutral-500 font-semibold"></span>
           <audio id="profile-music" preload="auto"></audio>
         </div>
     </div>
 </div>
 
 <script is:inline>
-  // Sử dụng IIFE để tránh xung đột biến toàn cục
-  (function() {
+  // Tạo sớm API toàn cục nếu chưa tồn tại
+  if (!window.musicPlayer) {
+    // Tạo ID duy nhất cho tab hiện tại - chỉ tồn tại trong tab này
+    const tabId = 'tab-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    sessionStorage.setItem('current-tab-id', tabId);
+    
     // Danh sách nhạc mp3
     const songs = [
       { src: "/assets/music/song1.mp3"},
@@ -86,60 +89,257 @@ const config = profileConfig;
       { src: "/assets/music/song33.mp3"},
       { src: "/assets/music/song34.mp3"}
     ];
-    // Random bài khi vào web
-    const randomIndex = Math.floor(Math.random() * songs.length);
-    const audio = document.getElementById('profile-music');
+  
+    // Tạo API quản lý nhạc toàn cục
+    window.musicPlayer = {
+      audioElement: new Audio(),
+      isPlaying: false,
+      currentIndex: 0,
+      songs: songs,
+      tabId: tabId,
+      swupEnabled: false,
+      
+      // Chọn bài hát ngẫu nhiên
+      getRandomSong: function() {
+        return Math.floor(Math.random() * this.songs.length);
+      },
+      
+      // Kiểm tra xem trang có đang được reload không
+      isPageReload: function() {
+        return window.performance && 
+          (window.performance.navigation && window.performance.navigation.type === 1 ||
+           (window.performance.getEntriesByType && 
+            window.performance.getEntriesByType('navigation')[0]?.type === 'reload'));
+      },
+      
+      // Kiểm tra xem đây có phải là lần đầu truy cập không
+      isFirstVisit: function() {
+        return !localStorage.getItem('music-visited');
+      },
+      
+      // Quản lý trạng thái khi vào trang lần đầu
+      handleFirstVisit: function() {
+        this.currentIndex = this.getRandomSong();
+        this.isPlaying = true;
+        localStorage.setItem('music-visited', 'true');
+      },
+      
+      // Quản lý trạng thái khi reload trang
+      handlePageReload: function() {
+        const isCurrentlyPlaying = localStorage.getItem('music-is-playing') === 'true';
+        
+        if (isCurrentlyPlaying) {
+          // Nếu đang phát: luôn random bài mới
+          this.currentIndex = this.getRandomSong();
+          this.isPlaying = true;
+        } else {
+          // Nếu đang dừng: giữ nguyên bài hiện tại
+          const savedIndex = localStorage.getItem('music-index');
+          this.currentIndex = savedIndex ? parseInt(savedIndex) : this.getRandomSong();
+          this.isPlaying = false;
+        }
+      },
+      
+      // Quản lý trạng thái khi chuyển trang
+      handlePageNavigation: function() {
+        const savedState = sessionStorage.getItem('music-state');
+        if (savedState) {
+          try {
+            const state = JSON.parse(savedState);
+            this.currentIndex = state.index;
+            this.isPlaying = state.isPlaying;
+          } catch (e) {
+            console.error('Lỗi khi khôi phục trạng thái nhạc:', e);
+            this.currentIndex = this.getRandomSong();
+          }
+        } else {
+          // Tab mới mở: chọn bài ngẫu nhiên và tự động phát
+          this.currentIndex = this.getRandomSong();
+          this.isPlaying = true;
+        }
+      },
+      
+      // Khởi tạo
+      init: function() {
+        // Xác định trạng thái dựa trên ngữ cảnh truy cập
+        if (this.isFirstVisit()) {
+          this.handleFirstVisit();
+        } else if (this.isPageReload()) {
+          this.handlePageReload();
+        } else {
+          this.handlePageNavigation();
+        }
+        
+        // Thiết lập nguồn nhạc
+        this.audioElement.src = this.songs[this.currentIndex].src;
+        
+        // Xử lý khi bài hát kết thúc
+        this.audioElement.addEventListener('ended', () => this.next());
+        
+        // Thiết lập Swup hooks
+        this.setupSwupHooks();
+        
+        // Phát nhạc nếu đang ở trạng thái phát
+        if (this.isPlaying) {
+          setTimeout(() => this.play(), 500);
+        }
+      },
+      
+      // Thiết lập Swup hooks
+      setupSwupHooks: function() {
+        if (window.swup) {
+          this.swupEnabled = true;
+          
+          // Trước khi chuyển trang: lưu trạng thái
+          window.swup.hooks.on('visit:start', () => this.saveState());
+          
+          // Sau khi hoàn thành chuyển trang: cập nhật UI
+          window.swup.hooks.on('visit:end', () => {
+            setTimeout(() => this.updateAllUI(), 300);
+          });
+        } else {
+          // Bắt sự kiện khi Swup được kích hoạt
+          document.addEventListener('swup:enable', () => {
+            this.swupEnabled = true;
+            
+            window.swup.hooks.on('visit:start', () => this.saveState());
+            
+            window.swup.hooks.on('visit:end', () => {
+              setTimeout(() => this.updateAllUI(), 300);
+            });
+          });
+        }
+      },
+      
+      // Phát/tạm dừng nhạc
+      togglePlay: function() {
+        this.isPlaying ? this.pause() : this.play();
+      },
+      
+      // Phát nhạc
+      play: function() {
+        const playPromise = this.audioElement.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              this.isPlaying = true;
+              this.saveState();
+              this.updateAllUI();
+            })
+            .catch((error) => {
+              console.log("Không thể phát nhạc tự động, có thể cần tương tác người dùng", error);
+              this.isPlaying = false;
+              this.saveState();
+              this.updateAllUI();
+            });
+        }
+      },
+      
+      // Tạm dừng nhạc
+      pause: function() {
+        this.audioElement.pause();
+        this.isPlaying = false;
+        this.saveState();
+        this.updateAllUI();
+      },
+      
+      // Chuyển bài tiếp theo
+      next: function() {
+        this.currentIndex = this.getRandomSong();
+        this.audioElement.src = this.songs[this.currentIndex].src;
+        this.play();
+      },
+      
+      // Lưu trạng thái
+      saveState: function() {
+        try {
+          // Lưu vào sessionStorage - chỉ cho tab hiện tại
+          const state = {
+            index: this.currentIndex,
+            isPlaying: this.isPlaying,
+            tabId: this.tabId
+          };
+          sessionStorage.setItem('music-state', JSON.stringify(state));
+          
+          // Lưu vào localStorage cho reload trang
+          localStorage.setItem('music-index', this.currentIndex.toString());
+          localStorage.setItem('music-is-playing', this.isPlaying.toString());
+        } catch (e) {
+          console.error('Lỗi khi lưu trạng thái nhạc:', e);
+        }
+      },
+      
+      // Cập nhật UI
+      updateAllUI: function() {
+        try {
+          const allBtns = document.querySelectorAll('[id="music-play-btn"]');
+          const allIcons = document.querySelectorAll('[id="music-icon"]');
+          
+          // Cập nhật nút
+          allBtns.forEach(btn => {
+            btn.classList.toggle('music-vibrate', this.isPlaying);
+            btn.setAttribute('title', this.isPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc');
+          });
+          
+          // Cập nhật biểu tượng
+          allIcons.forEach(icon => {
+            icon.classList.toggle('animate-spin-slow', this.isPlaying);
+            
+            if (this.isPlaying && icon.classList.contains('fa6-solid:play')) {
+              icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
+            } else if (!this.isPlaying && icon.classList.contains('fa6-solid:pause')) {
+              icon.classList.replace('fa6-solid:pause', 'fa6-solid:play');
+            }
+          });
+        } catch (e) {
+          console.error('Lỗi khi cập nhật UI trình phát nhạc:', e);
+        }
+      }
+    };
+    
+    // Khởi tạo player khi tạo lần đầu
+    window.musicPlayer.init();
+    
+    // Xử lý khi đóng tab
+    window.addEventListener('beforeunload', () => {
+      // Chỉ xóa sessionStorage khi đóng tab
+      sessionStorage.removeItem('music-state');
+      sessionStorage.removeItem('current-tab-id');
+      
+      // Không xóa localStorage khi reload, để giữ trạng thái
+    });
+  }
+  
+  // Xử lý sự kiện cho từng instance của button
+  (function() {
     const btn = document.getElementById('music-play-btn');
     const icon = document.getElementById('music-icon');
-    const title = document.getElementById('music-title');
-    let isPlaying = false;
-
-    if (!audio || !btn || !icon) return; // Kiểm tra element tồn tại
-
-    audio.src = songs[randomIndex].src;
-
-    // Hàm thêm/xóa hiệu ứng xoay
-    function setSpinning(spin) {
-      if (spin) {
-        icon.classList.add('animate-spin-slow');
-        btn.classList.add('music-vibrate');
-      } else {
-        icon.classList.remove('animate-spin-slow');
-        btn.classList.remove('music-vibrate');
+    const audio = document.getElementById('profile-music');
+    
+    if (!btn || !icon || !audio) return;
+    
+    // Đồng bộ UI ban đầu - Đảm bảo UI phản ánh đúng trạng thái nhạc
+    if (window.musicPlayer.isPlaying) {
+      // Đảm bảo icon đúng trạng thái
+      if (icon.classList.contains('fa6-solid:play')) {
+        icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
       }
-    }
-
-    // Tự động phát khi vào web (nếu trình duyệt cho phép)
-    window.addEventListener('DOMContentLoaded', () => {
-      audio.play().then(() => {
-        icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
-        setSpinning(true);
-        isPlaying = true;
-      }).catch(() => {});
-    });
-
-    // Bấm nút để play/pause
-    btn.addEventListener('click', () => {
-      if (!isPlaying) {
-        audio.play();
-        icon.classList.replace('fa6-solid:play', 'fa6-solid:pause');
-        setSpinning(true);
-        isPlaying = true;
-      } else {
-        audio.pause();
+      icon.classList.add('animate-spin-slow');
+      btn.classList.add('music-vibrate');
+    } else {
+      // Đảm bảo icon đúng trạng thái
+      if (icon.classList.contains('fa6-solid:pause')) {
         icon.classList.replace('fa6-solid:pause', 'fa6-solid:play');
-        setSpinning(false);
-        isPlaying = false;
       }
-    });
-
-    // Khi hết bài, random bài mới và tự động phát tiếp
-    audio.addEventListener('ended', () => {
-      const nextIndex = Math.floor(Math.random() * songs.length);
-      audio.src = songs[nextIndex].src;
-      title.textContent = songs[nextIndex].title;
-      audio.play();
-    });
+      icon.classList.remove('animate-spin-slow');
+      btn.classList.remove('music-vibrate');
+    }
+    
+    // Xử lý sự kiện click với biện pháp đặc biệt
+    btn.onclick = function() {
+      window.musicPlayer.togglePlay();
+      return false;
+    };
   })();
 </script>
 

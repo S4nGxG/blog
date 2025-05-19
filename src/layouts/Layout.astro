@@ -198,6 +198,28 @@ const bannerOffset =
 	'banner-height': `${BANNER_HEIGHT}vh`,
 }}>
 @tailwind components;
+
+/* Cải thiện việc cuộn trang */
+html {
+	scroll-behavior: auto !important; /* Tránh animation mặc định của trình duyệt */
+}
+
+/* Tối ưu hiển thị hình ảnh trong trang post */
+.markdown-content img, #post-cover img {
+	opacity: 0;
+	will-change: opacity;
+	transition: opacity 0.5s ease;
+}
+
+.markdown-content img[data-loaded="true"], #post-cover img[data-loaded="true"] {
+	opacity: 1;
+}
+
+/* Tối ưu chuyển trang */
+#swup-container {
+	will-change: transform, opacity;
+}
+
 @layer components {
 	.enable-banner.is-home #banner-wrapper {
 		@apply h-[var(--banner-height-home)] translate-y-[var(--banner-height-extend)]
@@ -244,6 +266,14 @@ import {
 	MAIN_PANEL_OVERLAPS_BANNER_HEIGHT
 } from "../constants/constants";
 import { siteConfig } from '../config';
+
+// Xử lý scroll hành vi mượt mà khi chuyển trang
+function ensureScrollTop() {
+	window.scrollTo({
+		top: 0,
+		behavior: 'auto'
+	});
+}
 
 /* Preload fonts */
 // (async function() {
@@ -385,8 +415,25 @@ function init() {
 	showBanner();
 }
 
+// Xử lý tải ảnh mượt mà
+function handleImages() {
+	const images = document.querySelectorAll('.markdown-content img, #post-cover img');
+	images.forEach(img => {
+		if (img instanceof HTMLImageElement) {
+			if (img.complete) {
+				img.setAttribute('data-loaded', 'true');
+			} else {
+				img.onload = () => {
+					img.setAttribute('data-loaded', 'true');
+				};
+			}
+		}
+	});
+}
+
 /* Load settings when entering the site */
 init();
+document.addEventListener('DOMContentLoaded', handleImages);
 
 const setup = () => {
 	// TODO: temp solution to change the height of the banner
@@ -401,6 +448,12 @@ const setup = () => {
 		}
 	})
 */
+	// Xử lý ảnh khi thay thế nội dung
+	window.swup.hooks.on('content:replace', () => {
+		initCustomScrollbar();
+		setTimeout(() => handleImages(), 50);
+	});
+
 	window.swup.hooks.on('link:click', () => {
 		// Remove the delay for the first time page load
 		document.documentElement.style.setProperty('--content-delay', '0ms')
@@ -418,8 +471,10 @@ const setup = () => {
 			navbar.classList.add('navbar-hidden')
 		}
 	})
-	window.swup.hooks.on('content:replace', initCustomScrollbar)
 	window.swup.hooks.on('visit:start', (visit: {to: {url: string}}) => {
+		// Đảm bảo cuộn về đầu trang ngay lập tức
+		ensureScrollTop();
+		
 		// change banner height immediately when a link is clicked
 		const bodyElement = document.querySelector('body')
 		if (pathsEqual(visit.to.url, url('/'))) {
@@ -441,6 +496,9 @@ const setup = () => {
 		}
 	});
 	window.swup.hooks.on('page:view', () => {
+		// Đảm bảo rằng trang đã cuộn lên đầu
+		ensureScrollTop();
+		
 		// hide the temp high element when the transition is done
 		const heightExtend = document.getElementById('page-height-extend')
 		if (heightExtend) {
