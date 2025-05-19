@@ -181,7 +181,47 @@ const config = profileConfig;
         
         // Phát nhạc nếu đang ở trạng thái phát
         if (this.isPlaying) {
-          setTimeout(() => this.play(), 500);
+          // Thử phát nhạc với nhiều cách khác nhau
+          this.tryPlayWithMultipleStrategies();
+        }
+      },
+
+      // Thử phát nhạc với nhiều cách khác nhau
+      tryPlayWithMultipleStrategies: function() {
+        // Cách 1: Phát trực tiếp
+        const playPromise = this.audioElement.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              this.isPlaying = true;
+              this.saveState();
+              this.updateAllUI();
+            })
+            .catch(() => {
+              // Cách 2: Thử phát sau khi tương tác với trang
+              document.addEventListener('click', () => {
+                this.audioElement.play()
+                  .then(() => {
+                    this.isPlaying = true;
+                    this.saveState();
+                    this.updateAllUI();
+                  })
+                  .catch(console.error);
+              }, { once: true });
+
+              // Cách 3: Thử phát sau khi tải xong
+              window.addEventListener('load', () => {
+                setTimeout(() => {
+                  this.audioElement.play()
+                    .then(() => {
+                      this.isPlaying = true;
+                      this.saveState();
+                      this.updateAllUI();
+                    })
+                    .catch(console.error);
+                }, 1000);
+              });
+            });
         }
       },
       
