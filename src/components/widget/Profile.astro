@@ -132,22 +132,24 @@ const config = profileConfig;
       // Quản lý trạng thái khi reload trang
       handlePageReload: function() {
         try {
-          const savedIndex = localStorage.getItem('music-index');
           const isCurrentlyPlaying = localStorage.getItem('music-is-playing') === 'true';
           
-          if (savedIndex !== null) {
-            this.currentIndex = parseInt(savedIndex);
-          } else {
+          if (isCurrentlyPlaying) {
+            // Nếu đang phát: random bài mới
             this.currentIndex = this.getRandomSong();
+            this.isPlaying = true;
+          } else {
+            // Nếu đang tắt: giữ nguyên bài hiện tại
+            const savedIndex = localStorage.getItem('music-index');
+            this.currentIndex = savedIndex ? parseInt(savedIndex) : this.getRandomSong();
+            this.isPlaying = false;
           }
           
-          this.isPlaying = isCurrentlyPlaying;
-          
-          // Lưu lại trạng thái để đảm bảo
+          // Lưu lại trạng thái
           localStorage.setItem('music-index', this.currentIndex.toString());
           localStorage.setItem('music-is-playing', this.isPlaying.toString());
           
-          // Nếu đang phát, thử phát lại
+          // Nếu đang phát, thử phát ngay
           if (this.isPlaying) {
             this.tryPlayWithMultipleStrategies();
           }
@@ -243,6 +245,21 @@ const config = profileConfig;
           }
         });
 
+        // Thêm event listener cho sự kiện DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+          if (this.isPlaying && this.audioElement.paused) {
+            setTimeout(() => {
+              this.tryPlayWithMultipleStrategies();
+            }, 500);
+          }
+        });
+
+        // Thử phát nhạc ngay lập tức nếu đang ở trạng thái phát
+        if (this.isPlaying) {
+          // Thử phát với nhiều cách khác nhau
+          this.tryPlayWithMultipleStrategies();
+        }
+
         // Lưu trạng thái ban đầu
         this.saveState();
       },
@@ -300,6 +317,19 @@ const config = profileConfig;
                     .catch(console.error);
                 }, 500);
               });
+
+              // Cách 5: Thử phát sau khi tương tác với bất kỳ phần tử nào
+              document.addEventListener('mousemove', () => {
+                if (this.isPlaying && this.audioElement.paused) {
+                  this.audioElement.play()
+                    .then(() => {
+                      this.isPlaying = true;
+                      this.saveState();
+                      this.updateAllUI();
+                    })
+                    .catch(console.error);
+                }
+              }, { once: true });
             });
         }
       },
