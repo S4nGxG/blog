@@ -122,40 +122,75 @@ const config = profileConfig;
         this.currentIndex = this.getRandomSong();
         this.isPlaying = true;
         localStorage.setItem('music-visited', 'true');
+        localStorage.setItem('music-index', this.currentIndex.toString());
+        localStorage.setItem('music-is-playing', 'true');
+        
+        // Thử phát nhạc ngay lập tức
+        this.tryPlayWithMultipleStrategies();
       },
       
       // Quản lý trạng thái khi reload trang
       handlePageReload: function() {
-        const isCurrentlyPlaying = localStorage.getItem('music-is-playing') === 'true';
-        
-        if (isCurrentlyPlaying) {
-          // Nếu đang phát: luôn random bài mới
-          this.currentIndex = this.getRandomSong();
-          this.isPlaying = true;
-        } else {
-          // Nếu đang dừng: giữ nguyên bài hiện tại
+        try {
           const savedIndex = localStorage.getItem('music-index');
-          this.currentIndex = savedIndex ? parseInt(savedIndex) : this.getRandomSong();
+          const isCurrentlyPlaying = localStorage.getItem('music-is-playing') === 'true';
+          
+          if (savedIndex !== null) {
+            this.currentIndex = parseInt(savedIndex);
+          } else {
+            this.currentIndex = this.getRandomSong();
+          }
+          
+          this.isPlaying = isCurrentlyPlaying;
+          
+          // Lưu lại trạng thái để đảm bảo
+          localStorage.setItem('music-index', this.currentIndex.toString());
+          localStorage.setItem('music-is-playing', this.isPlaying.toString());
+          
+          // Nếu đang phát, thử phát lại
+          if (this.isPlaying) {
+            this.tryPlayWithMultipleStrategies();
+          }
+        } catch (e) {
+          console.error('Lỗi khi khôi phục trạng thái nhạc:', e);
+          this.currentIndex = this.getRandomSong();
           this.isPlaying = false;
         }
       },
       
       // Quản lý trạng thái khi chuyển trang
       handlePageNavigation: function() {
-        const savedState = sessionStorage.getItem('music-state');
-        if (savedState) {
-          try {
+        try {
+          const savedState = sessionStorage.getItem('music-state');
+          if (savedState) {
             const state = JSON.parse(savedState);
             this.currentIndex = state.index;
             this.isPlaying = state.isPlaying;
-          } catch (e) {
-            console.error('Lỗi khi khôi phục trạng thái nhạc:', e);
-            this.currentIndex = this.getRandomSong();
+          } else {
+            // Nếu không có trạng thái trong session, thử lấy từ localStorage
+            const savedIndex = localStorage.getItem('music-index');
+            const isCurrentlyPlaying = localStorage.getItem('music-is-playing') === 'true';
+            
+            if (savedIndex !== null) {
+              this.currentIndex = parseInt(savedIndex);
+            } else {
+              this.currentIndex = this.getRandomSong();
+            }
+            
+            this.isPlaying = isCurrentlyPlaying;
           }
-        } else {
-          // Tab mới mở: chọn bài ngẫu nhiên và tự động phát
+          
+          // Lưu lại trạng thái để đảm bảo
+          this.saveState();
+          
+          // Nếu đang phát, thử phát lại
+          if (this.isPlaying) {
+            this.tryPlayWithMultipleStrategies();
+          }
+        } catch (e) {
+          console.error('Lỗi khi khôi phục trạng thái nhạc:', e);
           this.currentIndex = this.getRandomSong();
-          this.isPlaying = true;
+          this.isPlaying = false;
         }
       },
       
@@ -179,12 +214,6 @@ const config = profileConfig;
         // Thiết lập Swup hooks
         this.setupSwupHooks();
         
-        // Phát nhạc nếu đang ở trạng thái phát
-        if (this.isPlaying) {
-          // Thử phát nhạc với nhiều cách khác nhau
-          this.tryPlayWithMultipleStrategies();
-        }
-
         // Thêm event listener cho sự kiện play/pause của audio
         this.audioElement.addEventListener('play', () => {
           this.isPlaying = true;
@@ -197,6 +226,25 @@ const config = profileConfig;
           this.saveState();
           this.updateAllUI();
         });
+
+        // Thêm event listener cho sự kiện tương tác đầu tiên
+        document.addEventListener('click', () => {
+          if (this.isPlaying && this.audioElement.paused) {
+            this.tryPlayWithMultipleStrategies();
+          }
+        }, { once: true });
+
+        // Thêm event listener cho sự kiện load
+        window.addEventListener('load', () => {
+          if (this.isPlaying && this.audioElement.paused) {
+            setTimeout(() => {
+              this.tryPlayWithMultipleStrategies();
+            }, 1000);
+          }
+        });
+
+        // Lưu trạng thái ban đầu
+        this.saveState();
       },
 
       // Thử phát nhạc với nhiều cách khác nhau
@@ -238,6 +286,19 @@ const config = profileConfig;
                     })
                     .catch(console.error);
                 }, 1000);
+              });
+
+              // Cách 4: Thử phát sau khi DOMContentLoaded
+              document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                  this.audioElement.play()
+                    .then(() => {
+                      this.isPlaying = true;
+                      this.saveState();
+                      this.updateAllUI();
+                    })
+                    .catch(console.error);
+                }, 500);
               });
             });
         }
