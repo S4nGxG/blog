@@ -184,6 +184,19 @@ const config = profileConfig;
           // Thử phát nhạc với nhiều cách khác nhau
           this.tryPlayWithMultipleStrategies();
         }
+
+        // Thêm event listener cho sự kiện play/pause của audio
+        this.audioElement.addEventListener('play', () => {
+          this.isPlaying = true;
+          this.saveState();
+          this.updateAllUI();
+        });
+
+        this.audioElement.addEventListener('pause', () => {
+          this.isPlaying = false;
+          this.saveState();
+          this.updateAllUI();
+        });
       },
 
       // Thử phát nhạc với nhiều cách khác nhau
@@ -198,6 +211,11 @@ const config = profileConfig;
               this.updateAllUI();
             })
             .catch(() => {
+              // Nếu không phát được, cập nhật UI để phản ánh trạng thái thực tế
+              this.isPlaying = false;
+              this.saveState();
+              this.updateAllUI();
+
               // Cách 2: Thử phát sau khi tương tác với trang
               document.addEventListener('click', () => {
                 this.audioElement.play()
